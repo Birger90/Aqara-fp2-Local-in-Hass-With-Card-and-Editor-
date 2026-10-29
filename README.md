@@ -47,7 +47,7 @@ Konzept von Fensterfilter, Haltezeit, Sperrfläche und Leerlauf-Frames übernomm
 - `mounting_position` an deine Montage anpassen (`wall` | `left_corner` | `right_corner`).
 - `secrets.yaml` selbst anlegen (`wifi_ssid`, `wifi_password`, `fallback_hotspot_password`, `ota_password`, `api_encryption_key`).
 
-Flashen des FP2: siehe `FLASHING.md` bei hansihe/esphome_fp2. **Vorher die Original-Firmware komplett sichern**
+Flashen des FP2: **[FLASHING.md](FLASHING.md)** (Anschluss, GND, Sicherung, Stolpersteine) und hansihe/esphome_fp2. **Vorher die Original-Firmware komplett sichern**
 und kein `erase_flash` verwenden – die Partition `fctry` enthält gerätespezifische Kalibrierdaten.
 
 ### 2. Karte
