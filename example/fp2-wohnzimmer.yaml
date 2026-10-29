@@ -1,0 +1,268 @@
+# Aqara FP2 mit ESPHome (hansihe/esphome_fp2) + Raumauswertung fp2_rooms
+# Basis: example_config.yaml aus hansihe/esphome_fp2 (Board-, UART- und Pin-Angaben unverändert übernommen).
+esphome:
+  name: fp2-wohnzimmer
+  friendly_name: FP2 Wohnzimmer
+  on_boot:
+    priority: -100
+    then:
+      # aqara_fp2 startet mit ausgeschalteter Positionsmeldung (fp2_component.cpp, perform_reset_).
+      # fp2_rooms braucht sie -> nach der Radar-Initialisierung einschalten.
+      - delay: 20s
+      - switch.turn_on: fp2_report
+
+esp32:
+  board: esp32-solo1
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_FREERTOS_UNICORE: "y"
+      CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE: "y"
+    advanced:
+      ignore_efuse_mac_crc: true
+      ignore_efuse_custom_mac: true
+      # aqara_fp2_accel nutzt <driver/i2c.h>; ESPHome 2026.x schließt diese IDF-Komponenten standardmäßig aus
+      include_builtin_idf_components: [driver, esp_driver_i2c]
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "FP2 Wohnzimmer Fallback"
+    password: !secret fallback_hotspot_password
+
+captive_portal:
+
+logger:
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+  actions:
+    # Für hansihes Original-Karte (optional)
+    - action: get_map_config
+      supports_response: only
+      then:
+        - api.respond:
+            data: !lambda |-
+              id(fp2).json_get_map_data(root);
+    # --- Für fp2-room-card: Einmessung übertragen / lesen / löschen ---
+    - action: set_layout
+      variables:
+        layout: string
+      then:
+        - lambda: |-
+            std::string err;
+            id(rooms).set_layout(layout.str(), err);
+            id(layout_error) = err;
+        - api.respond:
+            data: !lambda |-
+              root["ok"] = id(layout_error).empty();
+              root["error"] = id(layout_error);
+    - action: get_layout
+      supports_response: only
+      then:
+        - api.respond:
+            data: !lambda |-
+              id(rooms).layout_json(root);
+    - action: clear_layout
+      then:
+        - lambda: id(rooms).clear_layout();
+
+globals:
+  - id: layout_error
+    type: std::string
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO19
+  rx_pin: GPIO18
+  baud_rate: 890000
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/hansihe/esphome_fp2
+      ref: main
+    components: [aqara_fp2, aqara_fp2_accel]
+  - source:
+      type: local
+      path: ../components          # fp2_rooms
+
+aqara_fp2_accel:
+  id: fp2_accel
+
+aqara_fp2:
+  id: fp2
+  accel: fp2_accel
+  uart_id: uart_bus
+  radar_reset_pin: GPIO13
+  mounting_position: wall           # an deine Montage anpassen: wall | left_corner | right_corner
+  left_right_reverse: false
+  target_tracking:
+    id: fp2_targets
+    name: "Targets"
+  location_report_switch:
+    id: fp2_report
+    name: "Report Targets"
+  global_zone:
+    presence_sensitivity: medium
+    presence:
+      name: "Radar Presence"
+    # Pflicht: aqara_fp2 ruft bei jeder Bewegungsmeldung des Radars global_motion_sensor_->publish_state()
+    # ohne Null-Prüfung auf (fp2_component.cpp, MOTION_DETECT) – ohne diesen Sensor stürzt der ESP ab.
+    motion:
+      name: "Radar Motion"
+  radar_software_version:
+    name: "Radar Software Version"
+  mounting_position_sensor:
+    name: "Mounting Position"        # für die Montage-Prüfung in der Karte
+
+fp2_rooms:
+  id: rooms
+  targets: fp2_targets
+  room:
+    presence:
+      name: "Wohnzimmer belegt"
+    count:
+      name: "Wohnzimmer Personen"
+  zones:
+    - slot: 0
+      label: "Sofa"
+      presence: { name: "Sofa belegt" }
+      count: { name: "Sofa Personen" }
+    - slot: 1
+      label: "Schreibtisch"
+      presence: { name: "Schreibtisch belegt" }
+    - slot: 2
+      label: "Esstisch"
+      presence: { name: "Esstisch belegt" }
+    - slot: 3
+      label: "Zone 4"
+      presence: { name: "Zone 4 belegt" }
+      count: { name: "Zone 4 Personen" }
+    - slot: 4
+      label: "Zone 5"
+      presence: { name: "Zone 5 belegt" }
+      count: { name: "Zone 5 Personen" }
+    - slot: 5
+      label: "Zone 6"
+      presence: { name: "Zone 6 belegt" }
+      count: { name: "Zone 6 Personen" }
+    - slot: 6
+      label: "Zone 7"
+      presence: { name: "Zone 7 belegt" }
+      count: { name: "Zone 7 Personen" }
+    - slot: 7
+      label: "Zone 8"
+      presence: { name: "Zone 8 belegt" }
+      count: { name: "Zone 8 Personen" }
+    - slot: 8
+      label: "Zone 9"
+      presence: { name: "Zone 9 belegt" }
+      count: { name: "Zone 9 Personen" }
+    - slot: 9
+      label: "Zone 10"
+      presence: { name: "Zone 10 belegt" }
+      count: { name: "Zone 10 Personen" }
+    - slot: 10
+      label: "Zone 11"
+      presence: { name: "Zone 11 belegt" }
+      count: { name: "Zone 11 Personen" }
+    - slot: 11
+      label: "Zone 12"
+      presence: { name: "Zone 12 belegt" }
+      count: { name: "Zone 12 Personen" }
+    - slot: 12
+      label: "Zone 13"
+      presence: { name: "Zone 13 belegt" }
+      count: { name: "Zone 13 Personen" }
+    - slot: 13
+      label: "Zone 14"
+      presence: { name: "Zone 14 belegt" }
+      count: { name: "Zone 14 Personen" }
+    - slot: 14
+      label: "Zone 15"
+      presence: { name: "Zone 15 belegt" }
+      count: { name: "Zone 15 Personen" }
+    - slot: 15
+      label: "Zone 16"
+      presence: { name: "Zone 16 belegt" }
+      count: { name: "Zone 16 Personen" }
+    - slot: 16
+      label: "Zone 17"
+      presence: { name: "Zone 17 belegt" }
+      count: { name: "Zone 17 Personen" }
+    - slot: 17
+      label: "Zone 18"
+      presence: { name: "Zone 18 belegt" }
+      count: { name: "Zone 18 Personen" }
+    - slot: 18
+      label: "Zone 19"
+      presence: { name: "Zone 19 belegt" }
+      count: { name: "Zone 19 Personen" }
+    - slot: 19
+      label: "Zone 20"
+      presence: { name: "Zone 20 belegt" }
+      count: { name: "Zone 20 Personen" }
+    - slot: 20
+      label: "Zone 21"
+      presence: { name: "Zone 21 belegt" }
+      count: { name: "Zone 21 Personen" }
+    - slot: 21
+      label: "Zone 22"
+      presence: { name: "Zone 22 belegt" }
+      count: { name: "Zone 22 Personen" }
+    - slot: 22
+      label: "Zone 23"
+      presence: { name: "Zone 23 belegt" }
+      count: { name: "Zone 23 Personen" }
+    - slot: 23
+      label: "Zone 24"
+      presence: { name: "Zone 24 belegt" }
+      count: { name: "Zone 24 Personen" }
+    - slot: 24
+      label: "Zone 25"
+      presence: { name: "Zone 25 belegt" }
+      count: { name: "Zone 25 Personen" }
+    - slot: 25
+      label: "Zone 26"
+      presence: { name: "Zone 26 belegt" }
+      count: { name: "Zone 26 Personen" }
+    - slot: 26
+      label: "Zone 27"
+      presence: { name: "Zone 27 belegt" }
+      count: { name: "Zone 27 Personen" }
+    - slot: 27
+      label: "Zone 28"
+      presence: { name: "Zone 28 belegt" }
+      count: { name: "Zone 28 Personen" }
+    - slot: 28
+      label: "Zone 29"
+      presence: { name: "Zone 29 belegt" }
+      count: { name: "Zone 29 Personen" }
+    - slot: 29
+      label: "Zone 30"
+      presence: { name: "Zone 30 belegt" }
+      count: { name: "Zone 30 Personen" }
+    - slot: 30
+      label: "Zone 31"
+      presence: { name: "Zone 31 belegt" }
+      count: { name: "Zone 31 Personen" }
+    - slot: 31
+      label: "Zone 32"
+      presence: { name: "Zone 32 belegt" }
+      count: { name: "Zone 32 Personen" }
+  state:
+    name: "Zonenstatus"
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO36
+      inverted: true
+    name: "Taste"

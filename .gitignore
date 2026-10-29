@@ -1,0 +1,16 @@
+.esphome/
+__pycache__/
+secrets.yaml
+test/out/
+test/core_test
+test/walls/*.gray
+test/walls/*.truth
+test/walls/out_*
+test/plans/*.gray
+
+# lokale Build-/Testprotokolle
+example/*.log
+example/*.err
+example/netlog*.txt
+example/.esphome/
+UEBERGABE.md

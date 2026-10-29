@@ -1,0 +1,14 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Demo</title>
+<style>:root{--primary-color:#03a9f4;--text-primary-color:#fff;--primary-text-color:#212121;--secondary-text-color:#727272;--divider-color:#e0e0e0;--card-background-color:#fff;--secondary-background-color:#f5f5f5}
+body{background:#fafafa;font-family:Roboto,sans-serif;margin:0;padding:16px}ha-card{display:block;background:#fff;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.12)}</style></head>
+<body><div id="wrap" style="max-width:960px"></div><script>
+customElements.define("ha-card", class extends HTMLElement {});
+const sys = {}; window.sys = sys;
+window.uploads = {};
+const hass = { user:{is_admin:true}, states:{}, hassUrl:(p)=>{ const m = p.match(/^\/api\/image\/serve\/([^/]+)\//); return m ? (window.uploads[m[1]] || "/test/grundriss.png") : p; },
+  callWS: async (m)=>{ if(m.type==="frontend/get_system_data") return {value: sys[m.key]??null}; if(m.type==="frontend/set_system_data"){sys[m.key]=JSON.parse(JSON.stringify(m.value));return null;} throw new Error(m.type); },
+  callService: async ()=>{ throw new Error("kein Dienst im Demo"); },
+  fetchWithAuth: async (path, init)=> { const f = init.body.get("file"); const id = "u" + Object.keys(window.uploads).length; window.uploads[id] = URL.createObjectURL(f); window.lastUpload = { name: f.name, type: f.type, size: f.size }; return new Response(JSON.stringify({id}),{status:200}); } };
+const s=document.createElement("script"); s.src="/card/fp2-room-card.js"; s.onload=()=>{ const c=document.createElement("fp2-room-card"); c.setConfig({title:"FP2 Test", demo:true}); document.getElementById("wrap").appendChild(c); window.card=c; c.hass=hass; };
+document.body.appendChild(s);
+</script></body></html>

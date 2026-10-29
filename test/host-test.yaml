@@ -1,0 +1,118 @@
+# Host-Build (Linux) zum Testen von fp2_rooms ohne Hardware.
+# Ein Template-Text-Sensor ersetzt aqara_fp2 und liefert Ziel-Datensätze im selben Format.
+esphome:
+  name: fp2-host-test
+
+host:
+
+logger:
+  level: DEBUG
+
+api:
+  port: 6053
+  actions:
+    # --- Aktionen für die Karte (identisch im echten FP2-YAML) ---
+    - action: set_layout
+      variables:
+        layout: string
+      then:
+        - lambda: |-
+            std::string err;
+            id(rooms).set_layout(layout.str(), err);
+            id(last_error) = err;
+        - api.respond:
+            data: !lambda |-
+              root["ok"] = id(last_error).empty();
+              root["error"] = id(last_error);
+    - action: get_layout
+      supports_response: only
+      then:
+        - api.respond:
+            data: !lambda |-
+              id(rooms).layout_json(root);
+    - action: clear_layout
+      then:
+        - lambda: id(rooms).clear_layout();
+    # --- nur Test: simulierte Ziele "x,y;x,y" (Radar-Rohkoordinaten) ---
+    - action: sim_targets
+      variables:
+        pts: string
+      then:
+        - lambda: |-
+            id(sim_pts) = pts.str();
+            id(sim_active) = true;
+    - action: sim_stop
+      then:
+        - lambda: id(sim_active) = false;
+
+globals:
+  - id: last_error
+    type: std::string
+  - id: sim_pts
+    type: std::string
+  - id: sim_active
+    type: bool
+    initial_value: "true"
+
+interval:
+  - interval: 100ms
+    then:
+      - lambda: |-
+          if (!id(sim_active)) return;
+          std::vector<uint8_t> b{0};
+          std::string s = id(sim_pts);
+          size_t pos = 0;
+          while (!s.empty() && pos <= s.size()) {
+            size_t e = s.find(';', pos);
+            if (e == std::string::npos) e = s.size();
+            std::string p = s.substr(pos, e - pos);
+            pos = e + 1;
+            int x, y;
+            if (sscanf(p.c_str(), "%d,%d", &x, &y) == 2) {
+              uint8_t t[14] = {0};
+              t[0] = b[0] + 1;
+              t[1] = (uint16_t) x >> 8; t[2] = x & 0xFF;
+              t[3] = (uint16_t) y >> 8; t[4] = y & 0xFF;
+              b.insert(b.end(), t, t + 14);
+              b[0]++;
+            }
+            if (e >= s.size()) break;
+          }
+          id(targets).publish_state(esphome::base64_encode(b));
+
+text_sensor:
+  - platform: template
+    id: targets
+    name: "Targets"
+  # nur Test: Ersatz für hansihes mounting_position_sensor (gleiche Werte)
+  - platform: template
+    name: "Montage"
+    lambda: 'return {"wall"};'
+    update_interval: 60s
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+
+fp2_rooms:
+  id: rooms
+  targets: targets
+  room:
+    presence:
+      name: "Raum belegt"
+    count:
+      name: "Raum Personen"
+  zones:
+    - slot: 0
+      label: "Sofa"
+      presence:
+        name: "Sofa belegt"
+      count:
+        name: "Sofa Personen"
+    - slot: 1
+      label: "Schreibtisch"
+      presence:
+        name: "Schreibtisch belegt"
+  state:
+    name: "Zonenstatus"

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>fp2-room-card ↔ fp2_rooms (Host-Build)</title>
+<style>
+  :root {
+    --primary-color: #03a9f4; --text-primary-color: #fff; --primary-text-color: #212121;
+    --secondary-text-color: #727272; --divider-color: #e0e0e0; --card-background-color: #fff;
+    --secondary-background-color: #f5f5f5; --error-color: #db4437; --warning-color: #ff9800;
+  }
+  body { background: #fafafa; font-family: Roboto, "Segoe UI", sans-serif; margin: 0; padding: 16px; }
+  ha-card { display: block; background: var(--card-background-color); border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+  .wrap { max-width: 960px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap"></div>
+<script>
+  customElements.define("ha-card", class extends HTMLElement {});
+  // Nachbildung der benutzten hass-Schnittstellen; Dienste gehen an den echten ESPHome-Host-Build
+  const sysdata = {};
+  window.calls = [];
+  window.hassStates = {};
+  const hass = () => ({
+    user: { is_admin: true, name: "Test" },
+    states: window.hassStates,
+    hassUrl: (p) => (p.startsWith("/api/image/serve/") ? "/test/grundriss.png" : p),
+    callWS: async (msg) => {
+      calls.push(msg.type);
+      if (msg.type === "frontend/get_system_data") return { value: sysdata[msg.key] ?? null };
+      if (msg.type === "frontend/set_system_data") { sysdata[msg.key] = JSON.parse(JSON.stringify(msg.value)); return null; }
+      throw new Error("unbekannt " + msg.type);
+    },
+    callService: async (domain, service, data, target, notify, returnResponse) => {
+      calls.push(`${domain}.${service}`);
+      if (domain !== "esphome") throw new Error("nur esphome");
+      const r = await fetch("/bridge/service", { method: "POST", body: JSON.stringify({ service, data, return_response: !!returnResponse }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      return { context: {}, response: j.response };
+    },
+    fetchWithAuth: async (path, init) => {
+      calls.push("POST " + path);
+      return new Response(JSON.stringify({ id: "abc123", name: init.body.get("file").name }), { status: 200 });
+    },
+  });
+  window.sysdata = sysdata;
+  const s = document.createElement("script");
+  s.src = "/card/fp2-room-card.js";
+  s.onload = async () => {
+    const card = document.createElement("fp2-room-card");
+    card.setConfig({
+      title: "Erdgeschoss",
+      storage_key: "eg",
+      devices: [{ device: "fp2-host-test", name: "Wohnzimmer", targets: "sensor.fp2_host_test_targets", state: "sensor.fp2_host_test_zonenstatus", mounting: "sensor.fp2_host_test_montage" }],
+    });
+    document.getElementById("wrap").appendChild(card);
+    window.card = card;
+    const poll = async () => { window.hassStates = await (await fetch("/bridge/states")).json(); card.hass = hass(); };
+    await poll();
+    setInterval(poll, 100);
+  };
+  document.body.appendChild(s);
+</script>
+</body>
+</html>

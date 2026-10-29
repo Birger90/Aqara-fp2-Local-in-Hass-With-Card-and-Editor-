@@ -1,0 +1,7 @@
+# Windows-Wrapper: ESP-IDF lehnt Leerzeichen im Projektpfad ab ("Code Projekte"),
+# deshalb Build-Verzeichnis in einen Pfad ohne Leerzeichen legen.
+packages:
+  base: !include fp2-wohnzimmer.yaml
+
+esphome:
+  build_path: C:/Users/test/esphome-build/fp2-wohnzimmer
