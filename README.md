@@ -62,6 +62,7 @@ devices:
     targets: sensor.fp2_wohnzimmer_targets
     state: sensor.fp2_wohnzimmer_zonenstatus
     mounting: sensor.fp2_wohnzimmer_mounting_position   # optional
+# full_grid: true                              # Live-Ansicht: ganzes 8×10-m-Raster statt Ausschnitt auf den Raum
   # weitere FP2 möglich
 ```
 

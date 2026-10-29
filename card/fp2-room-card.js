@@ -1650,7 +1650,7 @@ const FP2Math = (() => {
 /* ------------------------------------------------------------------ */
 
 if (typeof window !== "undefined" && typeof HTMLElement !== "undefined") {
-  const CARD_VERSION = "0.10.0";
+  const CARD_VERSION = "0.10.1";
   const STORE_PREFIX = "fp2_room_card_";
   // { version, floorplan, furniture, devices: { <device>: { align, mirror, zones: { <slot>: { name, color } }, furniture } } }
   // furniture: Möbel auf dem Grundriss (Plan-Koordinaten); devices[].furniture: Möbel im Raster des Geräts (cm)
@@ -2500,9 +2500,44 @@ if (typeof window !== "undefined" && typeof HTMLElement !== "undefined") {
     _viewBox() {
       const sc = this._scene();
       if (sc.fp) return { x: 0, y: 0, w: sc.fp.width, h: sc.fp.height };
+      if (this._view === "live" && !this._config.full_grid) {
+        const vb = this._roomViewBox(sc);
+        if (vb) return vb;
+      }
       const xs = sc.items.map((it) => it.align.pos[0]);
       const minX = Math.min(400, ...xs) - 400, maxX = Math.max(400, ...xs) + 400;
       return { x: minX - 40, y: -60, w: maxX - minX + 80, h: 1100 };
+    }
+
+    /**
+     * Live im Raster: Ausschnitt auf die gelernten Räume (wie die Aqara-App), dazu Sensoren und Möbel, eine Zelle Rand.
+     * null, solange kein Gerät einen Raum hat. full_grid: true in der Kartenkonfiguration zeigt immer das ganze Raster.
+     */
+    _roomViewBox(sc) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, rooms = 0;
+      const add = (x, y) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
+      for (const it of sc.items) {
+        if (!this._calibrated(it.d.device)) continue;
+        const mask = this._layout(it.d.device).room.mask;
+        mask.forEach((v, i) => {
+          if (!v) return;
+          rooms++;
+          for (const q of FP2Math.cellRect(i)) { const p = FP2Math.alignApply(it.align, q[0], q[1]); add(p[0], p[1]); }
+        });
+        add(it.align.pos[0], it.align.pos[1]);
+        const dx = it.align.pos[0] - 400;
+        for (const f of this._furnList(it.d.device) || []) {
+          const r = Math.hypot(f.w, f.h) / 2;
+          add(f.x + dx - r, f.y - r); add(f.x + dx + r, f.y + r);
+        }
+      }
+      if (!rooms) return null;
+      const pad = FP2Math.GRID.cell;
+      let w = x1 - x0 + 2 * pad, h = y1 - y0 + 2 * pad;
+      const min = 4 * FP2Math.GRID.cell;
+      const ex = Math.max(0, min - w) / 2, ey = Math.max(0, min - h) / 2;
+      w += 2 * ex; h += 2 * ey;
+      return { x: r1(x0 - pad - ex), y: r1(y0 - pad - ey), w: r1(w), h: r1(h) };
     }
 
     _u() { const vb = this._viewBox(); return Math.max(vb.w, vb.h) / 100; }
