@@ -22,6 +22,14 @@ Die Radar-Firmware liefert x/y in cm (int16 = 100 × Meter); Eckmontage dreht si
 - `Zonenstatus` (Text-Sensor, nur bei Änderung) für die Karte:
   `{"c":0|1,"r":[an,anzahl],"z":"<8 hex, Bit i = Slot i>","n":"<32 hex, Zeichen i = Anzahl Slot i, max. 15>"}`
 
+Dazu aus dem Beispiel-YAML (Hardware-Details in [ERKENNTNISSE.md](ERKENNTNISSE.md)):
+
+- `Helligkeit` (lx) – Lichtsensor TI OPT3001 auf I²C 0x44, nicht kalibriert
+- `LED` – RGB-LED als dimmbares Licht (GPIO14 rot, GPIO26 grün, GPIO27 blau, low-aktiv)
+- `LED Statusanzeige` – Fehler/Start/WLAN/HA-Verbindung wie bei Aqara über die LED; im Normalbetrieb aus
+- `Neigung`, `Einbaulage` (Beschleunigungssensor) und `Sensor bewegt` – ein, wenn sich die Lage seit dem letzten
+  Übertragen des Raums geändert hat; `Lage als Referenz übernehmen` setzt die Referenz neu
+
 Entitäten sind in ESPHome statisch, deshalb legt das Beispiel-YAML **32 Zonen-Slots auf Vorrat** an.
 In der Karte fügst du Zonen frei hinzu: Sie nimmt den nächsten freien Slot, benennt die HA-Entitäten um
 und blendet sie ein; beim Löschen werden sie wieder ausgeblendet.
