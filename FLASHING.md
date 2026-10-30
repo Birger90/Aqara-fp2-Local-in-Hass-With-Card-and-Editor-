@@ -1,3 +1,5 @@
+**Deutsch** · [English](FLASHING.en.md)
+
 # FP2 flashen – Erfahrungsbericht und Anleitung
 
 So haben wir einen Aqara FP2 (ESP32-SOLO-1, Radar TI IWR6843AOP) gesichert und mit ESPHome geflasht.

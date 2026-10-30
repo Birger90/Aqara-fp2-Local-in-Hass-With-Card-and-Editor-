@@ -1,3 +1,5 @@
+**Deutsch** · [English](FINDINGS.md)
+
 # Erkenntnisse zum Aqara FP2 unter ESPHome
 
 Gesammelt beim Umbau eines FP2 (Okt. 2026). Jeder Punkt ist als **belegt** (gemessen, im Quellcode gelesen

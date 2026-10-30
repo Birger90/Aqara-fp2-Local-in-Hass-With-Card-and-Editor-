@@ -1,3 +1,5 @@
+**Deutsch** · [English](README.en.md)
+
 # Aqara FP2 lokal in Home Assistant – mit Karte und Editor
 
 Raum- und Zonenerkennung für den **Aqara FP2 mit ESPHome-Firmware** ([hansihe/esphome_fp2](https://github.com/hansihe/esphome_fp2)), ohne Aqara-Cloud.
