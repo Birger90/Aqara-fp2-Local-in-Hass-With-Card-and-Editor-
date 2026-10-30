@@ -30,11 +30,63 @@ output:
 
 light:
   - platform: rgb
+    id: rgb_led
     name: "LED"
     red: led_r
     green: led_g
     blue: led_b
     restore_mode: ALWAYS_OFF
+
+# Statusanzeige nach dem Vorbild der Aqara-Anleitung (Normalbetrieb: LED aus, dann gilt das HA-Licht):
+#   rot dauerhaft      Gerätefehler (eine Komponente meldet Fehler, z. B. Radar)
+#   gelb schnell       Start, noch kein WLAN (erste 10 s)
+#   blau schnell       verbindet mit dem WLAN
+#   weiß dauerhaft     seit über 2 min kein WLAN
+#   blau langsam       WLAN da, aber Home Assistant nicht verbunden
+switch:
+  - platform: template
+    id: led_status_on
+    name: "LED Statusanzeige"
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+interval:
+  - interval: 100ms
+    then:
+      - lambda: |-
+          static uint32_t tick = 0, lost_since = 0;
+          static int prev = 0;
+          tick++;
+          const uint32_t now = millis();
+          const bool wifi_ok = wifi::global_wifi_component->is_connected();
+          if (wifi_ok) lost_since = 0; else if (lost_since == 0) lost_since = now;
+          int mode = 0;   // 0 normal, 1 rot, 2 gelb schnell, 3 blau schnell, 4 weiß, 5 blau langsam
+          if (!id(led_status_on).state) mode = 0;
+          else if (App.get_app_state() & STATUS_LED_ERROR) mode = 1;
+          else if (!wifi_ok && now < 10000) mode = 2;
+          else if (!wifi_ok) mode = (now - lost_since > 120000) ? 4 : 3;
+          else if (!api::global_api_server->is_connected()) mode = 5;
+          if (mode == 0) {
+            if (prev != 0) {   // zurück an das HA-Licht übergeben
+              float r, g, b;
+              id(rgb_led)->current_values_as_rgb(&r, &g, &b);
+              id(led_r).set_level(r); id(led_g).set_level(g); id(led_b).set_level(b);
+            }
+            prev = 0;
+            return;
+          }
+          prev = mode;
+          const bool fast = tick % 2, slow = (tick / 5) % 2;
+          float r = 0, g = 0, b = 0;
+          switch (mode) {
+            case 1: r = 1; break;
+            case 2: if (fast) { r = 1; g = 1; } break;
+            case 3: if (fast) b = 1; break;
+            case 4: r = g = b = 1; break;
+            case 5: if (slow) b = 1; break;
+          }
+          id(led_r).set_level(r); id(led_g).set_level(g); id(led_b).set_level(b);
 
 # Suche nach dem Lichtsensor: Scan des I2C-Busses (Port 0, SDA IO33 / SCL IO32), den aqara_fp2_accel
 # eingerichtet hat (0x27 = Beschleunigungssensor). Kein eigener i2c:-Block, der würde mit dem Treiber kollidieren.
