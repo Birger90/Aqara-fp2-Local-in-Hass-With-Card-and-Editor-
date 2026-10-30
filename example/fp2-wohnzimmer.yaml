@@ -12,14 +12,29 @@ esphome:
       - switch.turn_on: fp2_report
       - script.execute: i2c_scan
 
-# Status-LED: hansihe nutzt GPIO27 invertiert. Die LED hängt laut hansihes Pinliste auch an GPIO26 und GPIO14;
-# welche Farbe zu welchem Pin gehört, ist nicht dokumentiert.
+# RGB-LED: am Gerät einzeln getestet (30.10.2026) – GPIO14 = rot, GPIO26 = grün, GPIO27 = blau, alle low-aktiv.
+# (hansihe nutzt nur GPIO27 invertiert als Status-LED; hier stattdessen die ganze LED als dimmbares Licht.)
+output:
+  - platform: ledc
+    id: led_r
+    pin: GPIO14
+    inverted: true
+  - platform: ledc
+    id: led_g
+    pin: GPIO26
+    inverted: true
+  - platform: ledc
+    id: led_b
+    pin: GPIO27
+    inverted: true
+
 light:
-  - platform: status_led
-    name: "Status LED"
-    pin:
-      number: GPIO27
-      inverted: true
+  - platform: rgb
+    name: "LED"
+    red: led_r
+    green: led_g
+    blue: led_b
+    restore_mode: ALWAYS_OFF
 
 # Suche nach dem Lichtsensor: Scan des I2C-Busses (Port 0, SDA IO33 / SCL IO32), den aqara_fp2_accel
 # eingerichtet hat (0x27 = Beschleunigungssensor). Kein eigener i2c:-Block, der würde mit dem Treiber kollidieren.
