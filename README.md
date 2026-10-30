@@ -17,8 +17,10 @@ Die Radar-Firmware liefert x/y in cm (int16 = 100 × Meter); Eckmontage dreht si
 
 ## Entitäten auf dem ESP
 
-- `Wohnzimmer belegt` (binary_sensor, occupancy) und `Wohnzimmer Personen` (sensor)
-- je Zonen-Slot (0…31): `<Zone> belegt`, optional `<Zone> Personen`
+Alle Namen legst du im YAML fest; das Beispiel heißt „Wohnzimmer“ (Gerät `fp2-wohnzimmer`).
+
+- Raum: `<Raum> belegt` (binary_sensor, occupancy) und `<Raum> Personen` (sensor) – im YAML unter `fp2_rooms: room:`
+- je Zonen-Slot (0…31): `<Zone> belegt`, optional `<Zone> Personen` – unter `fp2_rooms: zones:`; die Karte benennt sie beim Anlegen einer Zone um
 - `Zonenstatus` (Text-Sensor, nur bei Änderung) für die Karte:
   `{"c":0|1,"r":[an,anzahl],"z":"<8 hex, Bit i = Slot i>","n":"<32 hex, Zeichen i = Anzahl Slot i, max. 15>"}`
 
