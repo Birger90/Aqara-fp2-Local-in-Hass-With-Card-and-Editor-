@@ -1650,7 +1650,7 @@ const FP2Math = (() => {
 /* ------------------------------------------------------------------ */
 
 if (typeof window !== "undefined" && typeof HTMLElement !== "undefined") {
-  const CARD_VERSION = "0.10.1";
+  const CARD_VERSION = "0.10.2";
   const STORE_PREFIX = "fp2_room_card_";
   // { version, floorplan, furniture, devices: { <device>: { align, mirror, zones: { <slot>: { name, color } }, furniture } } }
   // furniture: Möbel auf dem Grundriss (Plan-Koordinaten); devices[].furniture: Möbel im Raster des Geräts (cm)
@@ -1727,6 +1727,7 @@ if (typeof window !== "undefined" && typeof HTMLElement !== "undefined") {
           targets: d.targets,
           state: d.state ?? null,
           mounting: d.mounting ?? null,
+          moved: d.moved ?? null,     // binary_sensor "Sensor bewegt" (Lage geändert seit dem Übertragen des Raums)
         })),
       };
       this._renderShell();
@@ -2897,6 +2898,8 @@ if (typeof window !== "undefined" && typeof HTMLElement !== "undefined") {
         if (res.reason) warns.push(`${esc(d.name)}: ${esc(res.reason)}`);
         if (sc.fp && !it) warns.push(`${esc(d.name)}: noch nicht auf dem Grundriss ausgerichtet`);
         if (this._mountHint(d.device)) warns.push(`${esc(d.name)}: ${esc(this._mountHint(d.device))}`);
+        if (!this._demo && d.moved && this._hass && this._hass.states[d.moved] && this._hass.states[d.moved].state === "on")
+          warns.push(`${esc(d.name)}: Sensor wurde bewegt (Neigung oder Einbaulage anders als beim Einrichten) – Raum neu lernen oder in HA „Lage als Referenz übernehmen“.`);
         if (it)
           for (const t of res.targets) {
             const p = FP2Math.alignApply(it.align, t.x, t.y);

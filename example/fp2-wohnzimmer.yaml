@@ -138,6 +138,23 @@ sensor:
       if (i2c_master_write_read_device(I2C_NUM_0, 0x44, &reg, 1, v, 2, pdMS_TO_TICKS(50)) != ESP_OK) return NAN;
       const uint16_t raw = (v[0] << 8) | v[1];
       return 0.01f * (1 << (raw >> 12)) * (raw & 0x0FFF);
+  # Lage aus dem Beschleunigungssensor (aqara_fp2_accel). Den Winkel fragt auch der Radar selbst ab
+  # (ANGLE_SENSOR_DATA = 90° − |Neigung der Z-Achse|). Drehen um die senkrechte Achse misst er nicht.
+  - platform: template
+    id: tilt
+    name: "Neigung"
+    unit_of_measurement: "°"
+    entity_category: diagnostic
+    accuracy_decimals: 0
+    update_interval: 5s
+    lambda: return id(fp2_accel)->get_output_angle_z();
+
+text_sensor:
+  - platform: template
+    name: "Einbaulage"
+    entity_category: diagnostic
+    update_interval: 5s
+    lambda: return std::string(aqara_fp2_accel::orientation_to_string(id(fp2_accel)->get_orientation()));
 
 button:
   - platform: template
@@ -145,6 +162,13 @@ button:
     entity_category: diagnostic
     on_press:
       - script.execute: i2c_scan
+  - platform: template
+    name: "Lage als Referenz übernehmen"
+    entity_category: config
+    on_press:
+      - lambda: |-
+          id(tilt_ref) = id(fp2_accel)->get_output_angle_z();
+          id(orient_ref) = (int) id(fp2_accel)->get_orientation();
 
 esp32:
   board: esp32-solo1
@@ -194,6 +218,11 @@ api:
             std::string err;
             id(rooms).set_layout(layout.str(), err);
             id(layout_error) = err;
+            // Lage beim Übertragen des Raums merken -> "Sensor bewegt"
+            if (err.empty()) {
+              id(tilt_ref) = id(fp2_accel)->get_output_angle_z();
+              id(orient_ref) = (int) id(fp2_accel)->get_orientation();
+            }
         - api.respond:
             data: !lambda |-
               root["ok"] = id(layout_error).empty();
@@ -211,6 +240,15 @@ api:
 globals:
   - id: layout_error
     type: std::string
+  # Lage beim letzten Übertragen des Raums (im Flash, übersteht Neustarts); -999 = keine Referenz
+  - id: tilt_ref
+    type: int
+    restore_value: true
+    initial_value: "-999"
+  - id: orient_ref
+    type: int
+    restore_value: true
+    initial_value: "8"
 
 uart:
   id: uart_bus
@@ -401,3 +439,14 @@ binary_sensor:
       number: GPIO36
       inverted: true
     name: "Taste"
+  # Ein: Neigung um ≥ 3° oder Einbaulage anders als beim letzten Übertragen des Raums -> Raum neu lernen.
+  - platform: template
+    id: moved
+    name: "Sensor bewegt"
+    device_class: problem
+    filters:
+      - delayed_on: 10s        # kurzes Anfassen löst nicht aus
+    lambda: |-
+      if (id(tilt_ref) < -900) return false;   // noch keine Referenz
+      return std::abs(id(fp2_accel)->get_output_angle_z() - id(tilt_ref)) >= 3
+          || (int) id(fp2_accel)->get_orientation() != id(orient_ref);

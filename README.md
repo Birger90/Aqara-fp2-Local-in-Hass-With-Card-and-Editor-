@@ -62,8 +62,9 @@ devices:
     targets: sensor.fp2_wohnzimmer_targets
     state: sensor.fp2_wohnzimmer_zonenstatus
     mounting: sensor.fp2_wohnzimmer_mounting_position   # optional
-# full_grid: true                              # Live-Ansicht: ganzes 8×10-m-Raster statt Ausschnitt auf den Raum
+    moved: binary_sensor.fp2_wohnzimmer_sensor_bewegt   # optional: Warnung „Sensor wurde bewegt“
   # weitere FP2 möglich
+# full_grid: true                              # Live-Ansicht: ganzes 8×10-m-Raster statt Ausschnitt auf den Raum
 ```
 
 ### 3. Recorder
@@ -107,8 +108,10 @@ Die Browser-/Host-Tests (`test/e2e_*.py`, `test/host_api_test.py`, `test/host-te
 |---|---|
 | ESP-Logik (Zellen, Masken, Parser, Filter, 32 Zonen, Zonenstatus ≤ 255 Zeichen) | 14 Unit-Tests bestanden |
 | Karte (Raster, Lernen, Zonen, Möbel, Statusformat, Zeiger-Gesten) | 49 + 10 Tests in Node bestanden, Demo-Rauchtest |
-| Firmware für ESP32 (esp32-solo1, ESPHome 2026.9.1) | baut – RAM 28 %, Flash 49 %; läuft auf einem FP2 (per OTA aufgespielt) |
+| Firmware für ESP32 (esp32-solo1, ESPHome 2026.9.1) | baut – RAM 28 %, Flash 50 %; läuft auf einem FP2 (per OTA aufgespielt) |
 | Datenformat Radar (cm, Wandmodus: Sensor im Ursprung) | aus der Radar-Firmware abgeleitet und mit Messdaten geprüft |
-| Raum lernen / Störquellen / Zonen am echten FP2 | **noch nicht getestet** |
+| Am echten FP2 benutzt | Raum lernen, Möbel, Live-Anzeige und Personenzahl; Spiegelungs-Geister hinter dem Raumrand werden nicht gezählt |
+| Störquellen lernen / Zonen am echten FP2 | **noch nicht bestätigt** |
+| Lichtsensor, RGB-LED, Neigung | am Gerät gefunden bzw. getestet – siehe [ERKENNTNISSE.md](ERKENNTNISSE.md) |
 | Grundriss-Erkennung mit echten Exposé-Plänen | **nicht getestet** |
 | Montagehöhe | keine offizielle Aqara-Angabe gefunden; üblich genannt 1,4–1,8 m (nicht verifiziert) |
